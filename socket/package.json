@@ -6,6 +6,7 @@
     "start": "cross-env NODE_ENV=production node server"
   },
   "dependencies": {
+    "axios": "^0.27.2",
     "dotenv": "^8.2.0",
     "firebase-admin": "^9.5.0",
     "serialport": "^9.2.4",
