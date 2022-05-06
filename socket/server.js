@@ -2,10 +2,10 @@ var SerialPort = require('serialport');
 var xbee_api = require('xbee-api');
 var C = xbee_api.constants;
 var storage = require("./amoungirl-d1e48-firebase-adminsdk-kalho-b90460b1af.json")
-const axios = require('axios').default;
 var io = require('socket.io-client')
 
-const socket = io("http://10.57.29.158:3000")
+const socket = io("http://10.57.29.188:3000")
+// const socket = io("https://amoung-irl-server-game.herokuapp.com/")
 require('dotenv').config()
 
 socket.connect()
@@ -15,12 +15,10 @@ socket.on('connection', function () {
 
 const SERIAL_PORT = process.env.SERIAL_PORT;
 
-
 let time = 8
 let intervalId = null;
 
 let gameValues;
-
 
 var xbeeAPI = new xbee_api.XBeeAPI({
   api_mode: 1
@@ -53,15 +51,12 @@ serialport.on("open", function () {
 });
 
 // All frames parsed by the XBee will be emitted here
-
-// storage.listSensors().then((sensors) => sensors.forEach((sensor) => console.log(sensor.data())))
-
 xbeeAPI.parser.on("data", function (frame) {
+  console.log("frame = ", frame.remote64)
 
   //on new device is joined, register it
 
   //on packet received, dispatch event
-
   if (C.FRAME_TYPE.ZIGBEE_RECEIVE_PACKET === frame.type) {
     console.log("C.FRAME_TYPE.ZIGBEE_RECEIVE_PACKET");
     let dataReceived = String.fromCharCode.apply(null, frame.data);
@@ -71,7 +66,7 @@ xbeeAPI.parser.on("data", function (frame) {
   if (C.FRAME_TYPE.NODE_IDENTIFICATION === frame.type) {
     // let dataReceived = String.fromCharCode.apply(null, frame.nodeIdentifier);
     console.log("NODE_IDENTIFICATION");
-    storage.registerSensor(frame.remote64)
+    // storage.registerSensor(frame.remote64)
 
   } else if (C.FRAME_TYPE.ZIGBEE_IO_DATA_SAMPLE_RX === frame.type) {
 
@@ -86,6 +81,7 @@ xbeeAPI.parser.on("data", function (frame) {
     let puceIsBuzzer = gameValues.buzzer.mac === frame.remote64
 
     if (puceIsPlayer && buttonUp) {
+      console.log("player " +frame.remote64 + "dead" )
       socket.emit("deathPlayer", {"mac": frame.remote64})
 
     } else if (puceIsBuzzer && buttonUp && !gameValues.buzzer.isActive) {
@@ -120,10 +116,7 @@ xbeeAPI.parser.on("data", function (frame) {
         if(buttonDown) socket.emit('task', {"mac": frame.remote64, "status": false})
       }
     }
-
-
     // storage.registerSample(frame.remote64,frame.analogSamples.AD0 )
-
   } else if (C.FRAME_TYPE.REMOTE_COMMAND_RESPONSE === frame.type) {
     console.log("REMOTE_COMMAND_RESPONSE")
   } else {
@@ -137,6 +130,17 @@ xbeeAPI.parser.on("data", function (frame) {
 
 
 socket.on('initGame', (args) => {
+  console.log("init game" , args)
+  let frame_obj = { // AT Request to be sent
+    type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
+    remoteCommandOptions: 0x02,
+    destination64: "0013a20041c3475c",
+    command: "D2",
+    commandParameter: [0x04],
+  };
+
+  xbeeAPI.builder.write(frame_obj);
+
   gameValues = args
 })
 
@@ -171,3 +175,5 @@ socket.on('meeting', (args) => {
     gameValues.buzzer.isActive = args.status
   }
 })
+
+//todo ecouter start game
